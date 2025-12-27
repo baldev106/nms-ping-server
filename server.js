@@ -1,18 +1,24 @@
 const express = require("express");
-const ping = require("ping");
 const cors = require("cors");
+const { exec } = require("child_process");
 
 const app = express();
 app.use(cors());
 
-app.get("/ping", async (req,res)=>{
+app.get("/ping", (req, res) => {
   const ip = req.query.ip;
-  const result = await ping.promise.probe(ip);
-  res.json({
-    status: result.alive ? "UP" : "DOWN",
-    latency: result.time || "-"
+
+  exec(`ping -c 1 ${ip}`, (error, stdout) => {
+    if (error) {
+      return res.json({ status: "DOWN", latency: "-" });
+    }
+
+    const match = stdout.match(/time=(\d+\.?\d*)/);
+    const latency = match ? match[1] + " ms" : "-";
+
+    res.json({ status: "UP", latency });
   });
 });
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, ()=> console.log("Ping API running"));
+app.listen(PORT, () => console.log("Ping API running"));
